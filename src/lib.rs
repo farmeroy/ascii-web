@@ -59,7 +59,7 @@ impl<'a> ImageData<'a> {
                 }
                 let cell_area = (x_end - x_start) as f32 * (y_end - y_start) as f32;
                 let cell_brightness: f32 = cell_brightness_acc / cell_area;
-                output.push(xs[((xs.len() - 1) as f32 * cell_brightness / 255.0) as usize]);
+                output.push(xs[((xs.len() - 1) as f32 * (cell_brightness / 255.0)) as usize]);
             }
             output.push('\n');
         }
@@ -68,9 +68,9 @@ impl<'a> ImageData<'a> {
 }
 
 #[wasm_bindgen]
-pub fn ascii_art(img_bytes: &[u8], width: u32, height: u32) -> String {
+pub fn ascii_art(img_bytes: &[u8], width: u32, height: u32, cols: u32, rows: u32) -> String {
     let img = ImageData::new(img_bytes, width, height);
-    return img.pixels_to_ascii(width, height);
+    return img.pixels_to_ascii(cols, rows);
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 <html>
    <script type="module">
-    import init, { greet } from './pkg/rascii_web.js';
+    import init, { greet, ascii_art } from './pkg/rascii_web.js';
     await init();
     try {
   const img = new Image();
@@ -12,14 +12,20 @@
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    console.log(imageData.data); // the RGBA bytes
+    const aspect_ratio = img.naturalWidth/img.naturalHeight;
+    const cols = 280;
+    const rows = (cols / aspect_ratio) * 0.5; 
+    const art = ascii_art(imageData.data, img.naturalWidth, img.naturalHeight, cols, rows); // the RGBA bytes
+    console.log(art)
+    const pre = document.querySelector('pre');
+    pre.textContent = art;
 
     }
     } catch (e) {
     console.error(e)
     }
-  
   </script> 
   <body>
+    <pre style="background-color: black; color: white; font-size: .5em;"></pre>
   </body>
 </html>
