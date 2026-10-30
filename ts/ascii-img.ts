@@ -7,21 +7,88 @@ function ensureInit(): Promise<unknown> {
   return wasmReady;
 }
 
-class AsciiImg extends HTMLElement {
-  static observedAttributes = ['src'];
+const DEFAULT_MIN_COLS = 80;
+const DEFAULT_MAX_COLS = 200;
+
+const STYLES = `
+  :host {
+    display: block;
+  }
+  pre {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    white-space: pre;
+    font-family: var(--rascii-font-family, monospace);
+    font-size: var(--rascii-font-size, 8px);
+    line-height: var(--rascii-line-height, 1);
+    color: var(--rascii-color, white);
+    background-color: var(--rascii-bg, black);
+  }
+`;
+
+export class AsciiImg extends HTMLElement {
+  static observedAttributes = ['src', 'alt', 'min-cols', 'max-cols'];
+
+  #shadow: ShadowRoot;
+  #pre: HTMLPreElement;
+  #resizeObserver: ResizeObserver;
 
   #imageData: ImageData | null = null;
   #imageNaturalWidth: number = 0;
   #imageNaturalHeight: number = 0;
 
+  #minCols: number = DEFAULT_MIN_COLS;
+  #maxCols: number = DEFAULT_MAX_COLS;
+
+  constructor() {
+    super();
+    this.#shadow = this.attachShadow({ mode: 'open' });
+
+    const style = document.createElement('style');
+    style.textContent = STYLES;
+    this.#shadow.appendChild(style);
+
+    this.#pre = document.createElement('pre');
+    this.#pre.setAttribute('aria-hidden', 'true');
+    this.#shadow.appendChild(this.#pre);
+
+    this.setAttribute('role', 'img');
+
+    this.#resizeObserver = new ResizeObserver(() => this.renderAscii());
+  }
+
   connectedCallback(): void {
-    this.innerHTML = `<pre style="background-color: black; color: white; font-size: .8em;"></pre>`;
+    this.#resizeObserver.observe(this);
     this.loadImage();
   }
 
-  attributeChangedCallback(_name: string, oldValue: string | null, newValue: string | null): void {
-    if (oldValue !== newValue) {
-      this.loadImage();
+  disconnectedCallback(): void {
+    this.#resizeObserver.disconnect();
+  }
+
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+    if (oldValue === newValue) return;
+
+    switch (name) {
+      case 'src':
+        this.loadImage();
+        break;
+      case 'alt':
+        this.setAttribute('aria-label', newValue ?? '');
+        break;
+      case 'min-cols': {
+        const parsed = parseInt(newValue ?? '', 10);
+        this.#minCols = isNaN(parsed) ? DEFAULT_MIN_COLS : parsed;
+        this.renderAscii();
+        break;
+      }
+      case 'max-cols': {
+        const parsed = parseInt(newValue ?? '', 10);
+        this.#maxCols = isNaN(parsed) ? DEFAULT_MAX_COLS : parsed;
+        this.renderAscii();
+        break;
+      }
     }
   }
 
@@ -56,13 +123,31 @@ class AsciiImg extends HTMLElement {
     };
   }
 
+  private measureCharWidth(): number {
+    const span = document.createElement('span');
+    span.style.font = getComputedStyle(this.#pre).font;
+    span.style.visibility = 'hidden';
+    span.style.position = 'absolute';
+    span.textContent = 'M';
+    document.body.appendChild(span);
+    const width = span.getBoundingClientRect().width;
+    document.body.removeChild(span);
+    return width;
+  }
+
   private async renderAscii(): Promise<void> {
     if (!this.#imageData || !this.#imageNaturalHeight || !this.#imageNaturalWidth) return;
 
     await ensureInit();
 
+    const charWidth = this.measureCharWidth();
+    if (charWidth === 0) return;
+
+    const containerWidth = this.clientWidth;
+    const rawCols = Math.floor(containerWidth / charWidth);
+    const cols = Math.min(this.#maxCols, Math.max(this.#minCols, rawCols));
+
     const aspectRatio = this.#imageNaturalWidth / this.#imageNaturalHeight;
-    const cols = 120; // TODO this should be configurable or computable
     const rows = Math.round((cols / aspectRatio) * 0.5);
 
     const art = ascii_art(
@@ -73,12 +158,7 @@ class AsciiImg extends HTMLElement {
       rows,
     );
 
-    const pre = this.querySelector('pre');
-    if (!pre) {
-      console.error("Could not find <pre> tag!");
-      return;
-    }
-    pre.textContent = art; // maybe this should protect against xss
+    this.#pre.textContent = art;
   }
 }
 
