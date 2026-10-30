@@ -13,6 +13,7 @@ const DEFAULT_MAX_COLS = 200;
 const STYLES = `
   :host {
     display: block;
+    width: 100%;
   }
   pre {
     margin: 0;
@@ -40,6 +41,7 @@ export class AsciiImg extends HTMLElement {
 
   #minCols: number = DEFAULT_MIN_COLS;
   #maxCols: number = DEFAULT_MAX_COLS;
+  #lastRenderedCols: number = 0;
 
   constructor() {
     super();
@@ -72,6 +74,7 @@ export class AsciiImg extends HTMLElement {
 
     switch (name) {
       case 'src':
+        this.#lastRenderedCols = 0;
         this.loadImage();
         break;
       case 'alt':
@@ -146,6 +149,9 @@ export class AsciiImg extends HTMLElement {
     const containerWidth = this.clientWidth;
     const rawCols = Math.floor(containerWidth / charWidth);
     const cols = Math.min(this.#maxCols, Math.max(this.#minCols, rawCols));
+
+    if (cols === this.#lastRenderedCols) return;
+    this.#lastRenderedCols = cols;
 
     const aspectRatio = this.#imageNaturalWidth / this.#imageNaturalHeight;
     const rows = Math.round((cols / aspectRatio) * 0.5);
