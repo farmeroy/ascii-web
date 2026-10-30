@@ -2,16 +2,6 @@ mod utils;
 
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, rascii_web!");
-}
-
 struct ImageData<'a> {
     bits: &'a [u8],
     width: u32,
