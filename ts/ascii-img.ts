@@ -8,18 +8,21 @@ function ensureInit(): Promise<unknown> {
 }
 
 const DEFAULT_MIN_COLS = 80;
-const DEFAULT_MAX_COLS = 200;
+const DEFAULT_MAX_COLS = 300;
 
 const STYLES = `
   :host {
     display: block;
     width: 100%;
+    overflow: hidden;
+    contain: inline-size;
   }
   pre {
     margin: 0;
     padding: 0;
     overflow: hidden;
     white-space: pre;
+    max-width: 100%;
     font-family: var(--rascii-font-family, monospace);
     font-size: var(--rascii-font-size, 8px);
     line-height: var(--rascii-line-height, 1);
@@ -143,12 +146,18 @@ export class AsciiImg extends HTMLElement {
 
     await ensureInit();
 
-    const charWidth = this.measureCharWidth();
-    if (charWidth === 0) return;
+    this.#pre.style.fontSize = '';
+    const baseCharWidth = this.measureCharWidth();
+    if (baseCharWidth === 0) return;
 
     const containerWidth = this.clientWidth;
-    const rawCols = Math.floor(containerWidth / charWidth);
+    const rawCols = Math.floor(containerWidth / baseCharWidth);
     const cols = Math.min(this.#maxCols, Math.max(this.#minCols, rawCols));
+
+    if (rawCols < this.#minCols) {
+      const baseFontSize = parseFloat(getComputedStyle(this.#pre).fontSize);
+      this.#pre.style.fontSize = `${baseFontSize * (containerWidth / (cols * baseCharWidth))}px`;
+    }
 
     if (cols === this.#lastRenderedCols) return;
     this.#lastRenderedCols = cols;

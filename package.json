@@ -8,14 +8,27 @@
     ".": {
       "import": "./dist/ascii-img.js",
       "types": "./dist/ascii-img.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
     }
   },
   "files": [
     "dist/",
-    "pkg/"
+    "pkg/",
+    "pkg-node/"
   ],
+  "peerDependencies": {
+    "sharp": ">=0.32.0"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
+  },
   "scripts": {
-    "build:wasm": "wasm-pack build --target web",
+    "build:wasm": "wasm-pack build --target web && wasm-pack build --target nodejs --out-dir pkg-node",
     "build:ts": "tsc",
     "build": "npm run build:wasm && npm run build:ts",
     "dev": "npx serve .",
