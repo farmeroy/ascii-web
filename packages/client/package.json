@@ -1,0 +1,41 @@
+{
+  "name": "ascii-web",
+  "version": "0.9.0",
+  "description": "A web component that renders images as ASCII art using WASM",
+  "author": "Raffaele Cataldo",
+  "type": "module",
+  "main": "./dist/ascii-img.js",
+  "types": "./dist/ascii-img.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/ascii-img.js",
+      "types": "./dist/ascii-img.d.ts"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@ascii-web/wasm": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "sideEffects": true,
+  "keywords": [
+    "ascii",
+    "art",
+    "image",
+    "wasm",
+    "web-component"
+  ],
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farmeroy/ascii-web.git",
+    "directory": "packages/client"
+  }
+}

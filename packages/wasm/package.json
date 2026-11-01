@@ -1,0 +1,23 @@
+{
+  "name": "@ascii-web/wasm",
+  "version": "0.9.0",
+  "description": "WASM core for ascii-web: converts raw pixel data to ASCII art",
+  "author": "Raffaele Cataldo",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farmeroy/ascii-web.git",
+    "directory": "packages/wasm"
+  },
+  "exports": {
+    "./web": "./pkg/ascii_web.js",
+    "./node": "./pkg-node/ascii_web.js"
+  },
+  "files": [
+    "pkg/",
+    "pkg-node/"
+  ],
+  "scripts": {
+    "build": "wasm-pack build --target web --no-pack && wasm-pack build --target nodejs --out-dir pkg-node --no-pack"
+  }
+}

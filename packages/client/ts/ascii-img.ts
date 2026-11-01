@@ -1,4 +1,4 @@
-import init, { ascii_art } from '../pkg/rascii_web.js';
+import init, { ascii_art } from '@ascii-web/wasm/web';
 
 let wasmReady: Promise<unknown> | null = null;
 
@@ -23,11 +23,11 @@ const STYLES = `
     overflow: hidden;
     white-space: pre;
     max-width: 100%;
-    font-family: var(--rascii-font-family, monospace);
-    font-size: var(--rascii-font-size, 8px);
-    line-height: var(--rascii-line-height, 1);
-    color: var(--rascii-color, white);
-    background-color: var(--rascii-bg, black);
+    font-family: var(--ascii-font-family, monospace);
+    font-size: var(--ascii-font-size, 8px);
+    line-height: var(--ascii-line-height, 1);
+    color: var(--ascii-color, white);
+    background-color: var(--ascii-bg, black);
   }
 `;
 

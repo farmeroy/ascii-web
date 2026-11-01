@@ -10,6 +10,12 @@ The image dynamically resizes the number of characters used given a default font
 npm install ascii-web
 ```
 
+The server-side rendering package is separate:
+
+```bash
+npm install @ascii-web/server sharp
+```
+
 ## Usage
 
 ### Basic
@@ -37,11 +43,11 @@ The component exposes CSS custom properties for theming:
 
 ```css
 ascii-img {
-  --rascii-font-family: "Fira Code", monospace;
-  --rascii-font-size: 6px;
-  --rascii-line-height: 1;
-  --rascii-color: #00ff41;
-  --rascii-bg: #0d0d0d;
+  --ascii-font-family: "Fira Code", monospace;
+  --ascii-font-size: 6px;
+  --ascii-line-height: 1;
+  --ascii-color: #00ff41;
+  --ascii-bg: #0d0d0d;
 }
 ```
 
@@ -89,15 +95,11 @@ The component's height depends on the rendered output, which isn't known until a
 
 For static sites (Astro, Next.js, etc.), you can generate the ASCII at build time instead of shipping WASM to the client. Requires `sharp` as a peer dependency.
 
-```bash
-npm install sharp
-```
-
 ### Astro
 
 ```astro
 ---
-import { renderAscii } from 'ascii-web/server';
+import { renderAscii } from '@ascii-web/server';
 const art = await renderAscii('./src/assets/portrait.jpg', { cols: 120 });
 ---
 <pre set:text={art} />
@@ -106,7 +108,7 @@ const art = await renderAscii('./src/assets/portrait.jpg', { cols: 120 });
 ### React Server Component
 
 ```tsx
-import { renderAscii } from 'ascii-web/server';
+import { renderAscii } from '@ascii-web/server';
 
 export default async function AsciiPortrait() {
   const art = await renderAscii('./public/portrait.jpg', { cols: 120 });
@@ -126,7 +128,7 @@ renderAscii(input: string | ArrayBuffer | Uint8Array, opts?: {
 The low-level `ascii_art` function is also exported if you want to bring your own pixel data:
 
 ```ts
-import { ascii_art } from 'ascii-web/server';
+import { ascii_art } from '@ascii-web/server';
 const art = ascii_art(rgbaPixels, width, height, cols, rows);
 ```
 

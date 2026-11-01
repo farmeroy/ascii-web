@@ -1,49 +1,11 @@
 {
-  "name": "ascii-web",
-  "version": "0.1.0",
-  "type": "module",
-  "main": "./dist/ascii-img.js",
-  "types": "./dist/ascii-img.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/ascii-img.js",
-      "types": "./dist/ascii-img.d.ts"
-    },
-    "./server": {
-      "import": "./dist/server.js",
-      "types": "./dist/server.d.ts"
-    }
-  },
-  "files": [
-    "dist/",
-    "pkg/",
-    "pkg-node/"
-  ],
-  "peerDependencies": {
-    "sharp": ">=0.32.0"
-  },
-  "peerDependenciesMeta": {
-    "sharp": {
-      "optional": true
-    }
-  },
+  "name": "ascii-web-root",
+  "private": true,
   "scripts": {
-    "build:wasm": "wasm-pack build --target web && wasm-pack build --target nodejs --out-dir pkg-node",
-    "build:ts": "tsc",
-    "build": "npm run build:wasm && npm run build:ts",
-    "dev": "npx serve .",
-    "dev:ts": "tsc --watch"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.0"
-  },
-  "sideEffects": true,
-  "keywords": [
-    "ascii",
-    "art",
-    "image",
-    "wasm",
-    "web-component"
-  ],
-  "license": "MIT OR Apache-2.0"
+    "build:wasm": "pnpm --filter @ascii-web/wasm build",
+    "build:client": "pnpm --filter ascii-web build",
+    "build:server": "pnpm --filter @ascii-web/server build",
+    "build": "pnpm build:wasm && pnpm build:client && pnpm build:server",
+    "dev": "npx serve ."
+  }
 }

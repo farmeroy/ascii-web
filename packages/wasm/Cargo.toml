@@ -1,5 +1,5 @@
 [package]
-name = "rascii_web"
+name = "ascii_web"
 version = "0.1.0"
 authors = ["raffaele"]
 edition = "2018"

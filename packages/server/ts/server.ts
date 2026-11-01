@@ -1,4 +1,4 @@
-import { ascii_art } from '../pkg-node/rascii_web.js';
+import { ascii_art } from '@ascii-web/wasm/node';
 
 export interface RenderOptions {
   cols?: number;
@@ -30,5 +30,5 @@ export async function renderAscii(
   return ascii_art(new Uint8Array(pixels), width, height, cols, rows);
 }
 
-export { ascii_art } from '../pkg-node/rascii_web.js';
+export { ascii_art } from '@ascii-web/wasm/node';
 
