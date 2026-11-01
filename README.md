@@ -7,7 +7,7 @@ The image dynamically resizes the number of characters used given a default font
 ## Installation
 
 ```bash
-npm install ascii-web
+npm install @ascii-web/client
 ```
 
 The server-side rendering package is separate:
@@ -22,7 +22,7 @@ npm install @ascii-web/server sharp
 
 ```html
 <script type="module">
-  import 'ascii-web';
+  import '@ascii-web/client';
 </script>
 
 <ascii-img src="my-image.jpg"></ascii-img>

@@ -1,5 +1,5 @@
 {
-  "name": "ascii-web",
+  "name": "@ascii-web/client",
   "version": "0.9.0",
   "description": "A web component that renders images as ASCII art using WASM",
   "author": "Raffaele Cataldo",
