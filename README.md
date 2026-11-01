@@ -1,78 +1,140 @@
-<div align="center">
+# ascii-web
 
-  <h1><code>wasm-pack-template</code></h1>
+A slightly over-engineered approach to rendering ASCII images on web pages using WASM and web components.
 
-  <strong>A template for kick starting a Rust and WebAssembly project using <a href="https://github.com/rustwasm/wasm-pack">wasm-pack</a>.</strong>
+The image dynamically resizes the number of characters used given a default font size of 8px. On first render or resize, it calculates its container width and maximizes the number of columns it can fit.
 
-  <h3>
-    <a href="https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html">Tutorial</a>
-    <span> | </span>
-    <a href="https://discordapp.com/channels/442252698964721669/443151097398296587">Chat</a>
-  </h3>
+## Installation
 
-  <sub>Built with Rust and WebAssembly by <a href="https://rustwasm.github.io/">The Rust and WebAssembly Working Group</a></sub>
-</div>
-
-## About
-
-[Read this template tutorial][template-docs].
-
-This template is designed for compiling Rust libraries into WebAssembly and
-publishing the resulting package to NPM.
-
-Be sure to check out [other `wasm-pack` tutorials online][tutorials] for other
-templates and usages of `wasm-pack`.
-
-[tutorials]: https://rustwasm.github.io/docs/wasm-pack/tutorials/index.html
-[template-docs]: https://rustwasm.github.io/docs/wasm-pack/tutorials/npm-browser-packages/index.html
+```bash
+npm install ascii-web
+```
 
 ## Usage
 
-### Use `wasm-pack new` to Clone this Template
+### Basic
 
-```
-wasm-pack new my-project
-cd my-project
-```
+```html
+<script type="module">
+  import 'ascii-web';
+</script>
 
-### Build with `wasm-pack build`
-
-```
-wasm-pack build
+<ascii-img src="my-image.jpg"></ascii-img>
 ```
 
-### Test in Headless Browsers with `wasm-pack test`
+### Attributes
 
+| Attribute  | Default | Description |
+|------------|---------|-------------|
+| `src`      | —       | Image URL or path |
+| `alt`      | —       | Accessible label (sets `aria-label`) |
+| `min-cols` | `80`    | Minimum character columns |
+| `max-cols` | `300`   | Maximum character columns |
+
+### Styling
+
+The component exposes CSS custom properties for theming:
+
+```css
+ascii-img {
+  --rascii-font-family: "Fira Code", monospace;
+  --rascii-font-size: 6px;
+  --rascii-line-height: 1;
+  --rascii-color: #00ff41;
+  --rascii-bg: #0d0d0d;
+}
 ```
-wasm-pack test --headless --firefox
+
+### Preventing FOUC
+
+The component renders asynchronously (WASM init + image load), so there's a flash of empty content before the ASCII appears. Hide it until the element is defined:
+
+```css
+ascii-img:not(:defined) {
+  display: none;
+}
 ```
 
-### Publish to NPM with `wasm-pack publish`
+Or use a fade-in for something less jarring:
 
+```css
+ascii-img {
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+ascii-img:not(:defined) {
+  opacity: 0;
+}
 ```
-wasm-pack publish
+
+### Preventing layout shift
+
+The component's height depends on the rendered output, which isn't known until after the WASM runs. To reserve space and avoid layout shift, wrap it in a container with a fixed aspect ratio:
+
+```css
+.ascii-container {
+  width: 100%;
+  aspect-ratio: 16 / 9; /* adjust to match your image */
+  overflow: hidden;
+}
 ```
 
-## Batteries Included
+```html
+<div class="ascii-container">
+  <ascii-img src="portrait.jpg"></ascii-img>
+</div>
+```
 
-* [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) for communicating
-  between WebAssembly and JavaScript.
-* [`console_error_panic_hook`](https://github.com/rustwasm/console_error_panic_hook)
-  for logging panic messages to the developer console.
-* `LICENSE-APACHE` and `LICENSE-MIT`: most Rust projects are licensed this way, so these are included for you.
+## Server-side rendering
 
-## License
+For static sites (Astro, Next.js, etc.), you can generate the ASCII at build time instead of shipping WASM to the client. Requires `sharp` as a peer dependency.
 
-Licensed under either of
+```bash
+npm install sharp
+```
 
-* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+### Astro
 
-at your option.
+```astro
+---
+import { renderAscii } from 'ascii-web/server';
+const art = await renderAscii('./src/assets/portrait.jpg', { cols: 120 });
+---
+<pre set:text={art} />
+```
 
-### Contribution
+### React Server Component
 
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you, as defined in the Apache-2.0
-license, shall be dual licensed as above, without any additional terms or
-conditions.
+```tsx
+import { renderAscii } from 'ascii-web/server';
+
+export default async function AsciiPortrait() {
+  const art = await renderAscii('./public/portrait.jpg', { cols: 120 });
+  return <pre>{art}</pre>;
+}
+```
+
+### Options
+
+```ts
+renderAscii(input: string | ArrayBuffer | Uint8Array, opts?: {
+  cols?: number;  // default: 120
+  rows?: number;  // default: auto (preserves aspect ratio)
+}): Promise<string>
+```
+
+The low-level `ascii_art` function is also exported if you want to bring your own pixel data:
+
+```ts
+import { ascii_art } from 'ascii-web/server';
+const art = ascii_art(rgbaPixels, width, height, cols, rows);
+```
+
+## Does Rust/WASM make it faster?
+
+No, no it does not. This is just a static image.
+In fact, if you are only loading a single image that you could possibly render in advance, this will add ~100ms to the displaying of the image.
+
+## But is it fun?
+
+Yes, yes it is.
