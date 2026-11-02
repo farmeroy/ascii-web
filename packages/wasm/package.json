@@ -1,6 +1,6 @@
 {
   "name": "@ascii-web/wasm",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "WASM core for ascii-web: converts raw pixel data to ASCII art",
   "author": "Raffaele Cataldo",
   "license": "MIT OR Apache-2.0",
@@ -18,6 +18,6 @@
     "pkg-node/"
   ],
   "scripts": {
-    "build": "wasm-pack build --target web --no-pack && wasm-pack build --target nodejs --out-dir pkg-node --no-pack"
+    "build": "wasm-pack build --target web --no-pack && wasm-pack build --target nodejs --out-dir pkg-node --no-pack && rm -f pkg/.gitignore pkg-node/.gitignore"
   }
 }

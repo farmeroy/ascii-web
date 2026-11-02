@@ -1,6 +1,6 @@
 {
   "name": "@ascii-web/server",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Server-side ASCII art rendering for Astro, Next.js, and other Node.js frameworks",
   "author": "Raffaele Cataldo",
   "type": "module",
