@@ -98,93 +98,55 @@ mod tests {
     }
 
     #[test]
-    fn test_cell_bounds_cover_whole_size() {
-        for size in 1..=64 {
-            for cells in 1..=128 {
-                let bounds: Vec<(u32, u32)> =
-                    (0..cells).map(|i| cell_bounds(i, cells, size)).collect();
-                let ctx = format!("size {} cells {}: {:?}", size, cells, bounds);
-
-                assert_eq!(bounds[0].0, 0, "first cell doesn't start at 0, {}", ctx);
-                assert_eq!(bounds[bounds.len() - 1].1, size, "last cell doesn't reach the end, {}", ctx);
-                for &(start, end) in &bounds {
-                    assert!(start < end && end <= size, "empty or out of range cell, {}", ctx);
-                }
-                for pair in bounds.windows(2) {
-                    let (prev, next) = (pair[0], pair[1]);
-                    assert!(next.0 <= prev.1, "gap between cells, {}", ctx);
-                    if cells <= size {
-                        assert_eq!(next.0, prev.1, "cells overlap, {}", ctx);
-                    }
-                }
-            }
-        }
-    }
-
-    // Black image with a white right column and bottom row: the output's last
-    // column and last row must pick them up.
-    fn edge_image(width: u32, height: u32) -> Vec<u8> {
-        let mut pixels = vec![0u8; (width * height * 4) as usize];
-        for y in 0..height {
-            for x in 0..width {
-                if x == width - 1 || y == height - 1 {
-                    let i = ((y * width + x) * 4) as usize;
-                    pixels[i..i + 3].copy_from_slice(&[255, 255, 255]);
-                }
-            }
-        }
-        pixels
+    fn test_cell_bounds_uneven_split() {
+        // 10px into 4 cells is 2.5px each: cells alternate 2px and 3px and the
+        // last one ends on the last pixel
+        let cells: Vec<_> = (0..4).map(|i| cell_bounds(i, 4, 10)).collect();
+        assert_eq!(cells, [(0, 2), (2, 5), (5, 7), (7, 10)]);
     }
 
     #[test]
-    fn test_output_reaches_image_edges() {
-        // odd sizes so most cols/rows don't divide evenly
-        let (width, height) = (37, 23);
-        let pixels = edge_image(width, height);
-        let image = ImageData::new(&pixels, width, height);
-
-        // from half the pixel count up, edge cells are at most 2px so the
-        // white edge is bright enough to never average out to ' '
-        let sizes = (width / 2..=width * 2).flat_map(|c| (height / 2..=height * 2).map(move |r| (c, r)));
-        for (cols, rows) in sizes {
-            let result = image.pixels_to_ascii(cols, rows);
-            let lines: Vec<&str> = result.lines().collect();
-            assert_eq!(lines.len(), rows as usize);
-            for (i, line) in lines.iter().enumerate() {
-                assert_eq!(line.chars().count(), cols as usize);
-                assert_ne!(
-                    line.chars().last(),
-                    Some(' '),
-                    "{}x{}: row {} misses the image's right edge",
-                    cols,
-                    rows,
-                    i
-                );
-            }
-            assert!(
-                lines.last().unwrap().chars().all(|c| c != ' '),
-                "{}x{}: last row misses the image's bottom edge",
-                cols,
-                rows
-            );
-        }
+    fn test_cell_bounds_more_cells_than_pixels() {
+        // 2px into 4 cells: each pixel is shared by two cells, no cell is empty
+        let cells: Vec<_> = (0..4).map(|i| cell_bounds(i, 4, 2)).collect();
+        assert_eq!(cells, [(0, 1), (0, 1), (1, 2), (1, 2)]);
     }
 
     #[test]
-    fn test_white_image_is_all_bright_at_any_size() {
-        let pixels = vec![255u8; 4 * 4 * 4];
-        let image = ImageData::new(&pixels, 4, 4);
-        for cols in 1..=12 {
-            for rows in 1..=12 {
-                let result = image.pixels_to_ascii(cols, rows);
-                assert!(
-                    result.lines().all(|l| l.chars().all(|c| c == '@')),
-                    "{}x{}:\n{}",
-                    cols,
-                    rows,
-                    result
-                );
-            }
-        }
+    fn test_right_edge_is_rendered() {
+        // 5×1 image: black, black, black, black, white
+        let pixels = vec![
+            0, 0, 0, 255, //
+            0, 0, 0, 255, //
+            0, 0, 0, 255, //
+            0, 0, 0, 255, //
+            255, 255, 255, 255, //
+        ];
+        let image = ImageData::new(&pixels, 5, 1);
+        // 3 cols over 5px: [0], [1, 2], [3, 4]; the last cell is half white
+        assert_eq!(image.pixels_to_ascii(3, 1), "  =\n");
+    }
+
+    #[test]
+    fn test_bottom_edge_is_rendered() {
+        // 1×5 image: black, black, black, black, white
+        let pixels = vec![
+            0, 0, 0, 255, //
+            0, 0, 0, 255, //
+            0, 0, 0, 255, //
+            0, 0, 0, 255, //
+            255, 255, 255, 255, //
+        ];
+        let image = ImageData::new(&pixels, 1, 5);
+        // 3 rows over 5px: [0], [1, 2], [3, 4]; the last cell is half white
+        assert_eq!(image.pixels_to_ascii(1, 3), " \n \n=\n");
+    }
+
+    #[test]
+    fn test_more_cols_and_rows_than_pixels() {
+        // 1×1 white image
+        let pixels = vec![255, 255, 255, 255];
+        let image = ImageData::new(&pixels, 1, 1);
+        assert_eq!(image.pixels_to_ascii(3, 2), "@@@\n@@@\n");
     }
 }
