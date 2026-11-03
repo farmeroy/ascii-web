@@ -14,20 +14,24 @@ const STYLES = `
   :host {
     display: block;
     width: 100%;
-    overflow: hidden;
     contain: inline-size;
   }
-  pre {
+  pre, .measure {
     margin: 0;
     padding: 0;
-    overflow: hidden;
     white-space: pre;
-    max-width: 100%;
     font-family: var(--ascii-font-family, monospace);
     font-size: var(--ascii-font-size, 8px);
     line-height: var(--ascii-line-height, 1);
+  }
+  pre {
     color: var(--ascii-color, white);
     background-color: var(--ascii-bg, black);
+  }
+  .measure {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
   }
 `;
 
@@ -36,7 +40,9 @@ export class AsciiImg extends HTMLElement {
 
   #shadow: ShadowRoot;
   #pre: HTMLPreElement;
+  #measure: HTMLSpanElement;
   #resizeObserver: ResizeObserver;
+  #resizeFrame: number = 0;
 
   #imageData: ImageData | null = null;
   #imageNaturalWidth: number = 0;
@@ -58,9 +64,20 @@ export class AsciiImg extends HTMLElement {
     this.#pre.setAttribute('aria-hidden', 'true');
     this.#shadow.appendChild(this.#pre);
 
+    this.#measure = document.createElement('span');
+    this.#measure.className = 'measure';
+    this.#measure.textContent = 'M'.repeat(100);
+    this.#shadow.appendChild(this.#measure);
+
     this.setAttribute('role', 'img');
 
-    this.#resizeObserver = new ResizeObserver(() => this.renderAscii());
+    // render on the next frame rather than inside the callback: rendering
+    // changes the host's height, which would resize the observed element
+    // mid-callback and trigger a ResizeObserver loop error
+    this.#resizeObserver = new ResizeObserver(() => {
+      cancelAnimationFrame(this.#resizeFrame);
+      this.#resizeFrame = requestAnimationFrame(() => this.renderAscii());
+    });
   }
 
   connectedCallback(): void {
@@ -70,6 +87,7 @@ export class AsciiImg extends HTMLElement {
 
   disconnectedCallback(): void {
     this.#resizeObserver.disconnect();
+    cancelAnimationFrame(this.#resizeFrame);
   }
 
   attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
@@ -130,15 +148,7 @@ export class AsciiImg extends HTMLElement {
   }
 
   private measureCharWidth(): number {
-    const span = document.createElement('span');
-    span.style.font = getComputedStyle(this.#pre).font;
-    span.style.visibility = 'hidden';
-    span.style.position = 'absolute';
-    span.textContent = 'M';
-    document.body.appendChild(span);
-    const width = span.getBoundingClientRect().width;
-    document.body.removeChild(span);
-    return width;
+    return this.#measure.getBoundingClientRect().width / 100;
   }
 
   private async renderAscii(): Promise<void> {
