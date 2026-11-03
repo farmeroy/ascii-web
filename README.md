@@ -10,12 +10,6 @@ The image dynamically resizes the number of characters used given a default font
 npm install @ascii-web/client
 ```
 
-The server-side rendering package is separate:
-
-```bash
-npm install @ascii-web/server sharp
-```
-
 ## Usage
 
 ### Basic
@@ -95,6 +89,15 @@ The component's height depends on the rendered output, which isn't known until a
 
 For static sites (Astro, Next.js, etc.), you can generate the ASCII at build time instead of shipping WASM to the client. Requires `sharp` as a peer dependency.
 
+This will use the Rust Wasm ascii generator on the server to generate an ASCII image with a fixed number of columns.
+It is then up to you to style them appropriately if you want to display them on your web page.
+
+The server-side rendering package is separate:
+
+```bash
+npm install @ascii-web/server sharp
+```
+
 ### Astro
 
 ```astro
@@ -134,9 +137,13 @@ const art = ascii_art(rgbaPixels, width, height, cols, rows);
 
 ## Does Rust/WASM make it faster?
 
-No, no it does not. This is just a static image.
-In fact, if you are only loading a single image that you could possibly render in advance, this will add ~100ms to the displaying of the image.
+No, no it does not.
+In fact, if you are only loading a single image that you could possibly render in advance, this will add some (almost unnoticeable) latency as the WASM and web components are loaded.
 
-## But is it fun?
+Furthermore, if you only want to render 1 ascii image, it would arguably be faster to write the ascii generate in JavaScript, which would avoid downloading the WASM binary.
 
-Yes, yes it is.
+## But is it fun? ...or, why use it?
+
+Yes, yes it is fun and it was fun to make.
+I also think if you are rendering many, many ascii images dynamically on a web page this might be better? 
+
