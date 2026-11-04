@@ -35,3 +35,15 @@ test('fits and fills its container as the container resizes', async ({ page }) =
 
   expect(await page.evaluate(() => (window as any).errors)).toEqual([]);
 });
+
+test('does not make a narrow page scroll sideways', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto('/tests/fixtures/index.html');
+  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
+
+  const { scrollWidth, clientWidth } = await page.evaluate(() => {
+    const { scrollWidth, clientWidth } = document.documentElement;
+    return { scrollWidth, clientWidth };
+  });
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});

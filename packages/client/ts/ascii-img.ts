@@ -28,10 +28,15 @@ const STYLES = `
     color: var(--ascii-color, white);
     background-color: var(--ascii-bg, black);
   }
-  .measure {
+  /* clips the measure span so its width never makes the page scroll */
+  .measure-box {
     position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+  .measure {
     visibility: hidden;
-    pointer-events: none;
   }
 `;
 
@@ -67,7 +72,10 @@ export class AsciiImg extends HTMLElement {
     this.#measure = document.createElement('span');
     this.#measure.className = 'measure';
     this.#measure.textContent = 'M'.repeat(100);
-    this.#shadow.appendChild(this.#measure);
+    const measureBox = document.createElement('div');
+    measureBox.className = 'measure-box';
+    measureBox.appendChild(this.#measure);
+    this.#shadow.appendChild(measureBox);
 
     this.setAttribute('role', 'img');
 
