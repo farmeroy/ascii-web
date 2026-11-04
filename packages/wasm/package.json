@@ -1,6 +1,6 @@
 {
   "name": "@ascii-web/wasm",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "WASM core for ascii-web: converts raw pixel data to ASCII art",
   "author": "Raffaele Cataldo",
   "license": "MIT OR Apache-2.0",
