@@ -6,6 +6,12 @@
     "build:client": "pnpm --filter @ascii-web/client build",
     "build:server": "pnpm --filter @ascii-web/server build",
     "build": "pnpm build:wasm && pnpm build:client && pnpm build:server",
-    "dev": "npx serve ."
+    "dev": "vite",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.6",
+    "vite": "^8.3.5"
   }
 }

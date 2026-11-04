@@ -1,0 +1,37 @@
+import { test, expect, type Page } from '@playwright/test';
+
+// Does the rendered text fit inside the component, and fill it to within
+// one character?
+async function fit(page: Page) {
+  return page.evaluate(() => {
+    const el = document.querySelector('ascii-img')!;
+    const pre = el.shadowRoot!.querySelector('pre')!;
+    if (!pre.textContent) return null;
+
+    const range = document.createRange();
+    range.selectNodeContents(pre);
+    const textRight = Math.max(...Array.from(range.getClientRects(), (r) => r.right));
+    const right = el.getBoundingClientRect().right;
+    const charWidth = (textRight - pre.getBoundingClientRect().left) / pre.textContent.indexOf('\n');
+
+    return { fits: textRight <= right + 0.5, fills: right - textRight < charWidth };
+  });
+}
+
+test('fits and fills its container as the container resizes', async ({ page }) => {
+  // window error events, which is how browsers report ResizeObserver loops
+  await page.addInitScript(() => {
+    const errors: string[] = ((window as any).errors = []);
+    window.addEventListener('error', (e) => errors.push(e.message));
+  });
+  await page.goto('/tests/fixtures/index.html');
+  const container = page.locator('#container');
+
+  // 200px is below the min-cols floor (80 cols at 8px), where the font scales down
+  for (const width of [1200, 800, 400, 200, 800, 1200]) {
+    await container.evaluate((el, w) => (el.style.width = `${w}px`), width);
+    await expect.poll(() => fit(page), { message: `at ${width}px` }).toEqual({ fits: true, fills: true });
+  }
+
+  expect(await page.evaluate(() => (window as any).errors)).toEqual([]);
+});
