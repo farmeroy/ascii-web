@@ -62,8 +62,14 @@
         </fieldset>
         <fieldset>
           <label>min cols <input id="min-cols" type="number" min="1" value="80" /></label>
-          <label>max cols <input id="max-cols" type="number" min="1" value="300" /></label>
+          <label>max cols <input id="max-cols" type="number" min="1" value="512" /></label>
         </fieldset>
+        <p>
+          <small>
+            Narrower than min cols fit, the font shrinks to keep that many. Wider than max cols fit, the art
+            stops growing.
+          </small>
+        </p>
         <fieldset>
           <label>your image (or drop one on the page) <input id="upload" type="file" accept="image/*" /></label>
           <button id="restore">restore</button>
@@ -141,7 +147,7 @@
           '<ascii-img',
           `  src="${fileName}"`,
           `  min-cols="${img.getAttribute('min-cols') ?? 80}"`,
-          `  max-cols="${img.getAttribute('max-cols') ?? 300}"`,
+          `  max-cols="${img.getAttribute('max-cols') ?? 512}"`,
           '></ascii-img>',
           '',
           '<style>',

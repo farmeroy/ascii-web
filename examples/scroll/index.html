@@ -10,6 +10,14 @@
     <link rel="stylesheet" href="../style.css" />
     <script type="module" src="../../packages/client/ts/ascii-img.ts"></script>
     <style>
+      /* controls stay at the top while scrolling */
+      fieldset {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        padding-block: var(--space-3);
+        background: var(--color-deep);
+      }
       figure {
         margin-bottom: var(--space-8);
       }
@@ -27,6 +35,10 @@
     <main>
       <h1><a href="../">ascii-web</a> · Infinite scroll</h1>
 
+      <fieldset>
+        <label>font size (smaller is more detail) <input id="font-size" type="range" min="4" max="24" value="12" /></label>
+      </fieldset>
+
       <div id="feed"></div>
       <div id="more">Loading…</div>
     </main>
@@ -36,6 +48,25 @@
       const more = document.querySelector('#more');
       let page = 1;
       let loading = false;
+
+      // apply the font size once it stops changing: each change re-renders
+      // every image in the feed
+      function debounce(fn, ms = 150) {
+        let timer;
+        return (e) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(e), ms);
+        };
+      }
+
+      // set on the feed, the size is inherited by every image, including ones
+      // added later; the slider starts at the stylesheet's size (smaller on phones)
+      const fontSize = document.querySelector('#font-size');
+      fontSize.value = parseFloat(getComputedStyle(feed).getPropertyValue('--ascii-font-size'));
+      fontSize.addEventListener(
+        'input',
+        debounce((e) => feed.style.setProperty('--ascii-font-size', `${e.target.value}px`)),
+      );
 
       // set src a screen before an image scrolls into view, rather than for
       // every image at once
