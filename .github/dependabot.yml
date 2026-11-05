@@ -1,0 +1,11 @@
+# weekly PRs that bump the pinned action SHAs (and their version comments) in
+# .github/workflows, grouped into one PR so they don't pile up
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
