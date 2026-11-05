@@ -35,7 +35,9 @@ const STYLES = `
     height: 0;
     overflow: hidden;
   }
+  /* inline-block: exactly as wide as its text and as tall as one line */
   .measure {
+    display: inline-block;
     visibility: hidden;
   }
 `;
@@ -91,6 +93,9 @@ export class AsciiImg extends HTMLElement {
     if (!this.hasAttribute('role')) this.setAttribute('role', 'img');
     this.#resizeObserver.observe(this);
     ensureInit(); // begin loading wasm async
+    // // NOTE: the src img is loaded by this.loadImage
+    // // inside of attributeChangedCallback
+    // // attributeChangedCallback fires _before_ connectedCallback
   }
 
   disconnectedCallback(): void {
@@ -133,6 +138,8 @@ export class AsciiImg extends HTMLElement {
     img.src = src;
 
     img.onload = () => {
+      // check if src has been updated while loading
+      if (this.getAttribute('src') !== src) return;
       const canvas = document.createElement('canvas');
       this.#imageNaturalWidth = img.naturalWidth;
       this.#imageNaturalHeight = img.naturalHeight;
@@ -155,8 +162,10 @@ export class AsciiImg extends HTMLElement {
     };
   }
 
-  private measureCharWidth(): number {
-    return this.#measure.getBoundingClientRect().width / 100;
+  // size of one character cell: its width, and the line height
+  private measureChar(): { width: number; height: number } {
+    const { width, height } = this.#measure.getBoundingClientRect();
+    return { width: width / 100, height };
   }
 
   private async renderAscii(): Promise<void> {
@@ -165,8 +174,9 @@ export class AsciiImg extends HTMLElement {
     await ensureInit();
 
     this.#pre.style.fontSize = '';
-    const baseCharWidth = this.measureCharWidth();
-    if (baseCharWidth === 0) return;
+    const char = this.measureChar();
+    if (char.width === 0 || char.height === 0) return;
+    const baseCharWidth = char.width;
 
     const containerWidth = this.clientWidth;
     const rawCols = Math.floor(containerWidth / baseCharWidth);
@@ -180,8 +190,10 @@ export class AsciiImg extends HTMLElement {
     if (cols === this.#lastRenderedCols) return;
     this.#lastRenderedCols = cols;
 
+    // characters are narrower than they are tall, so the art needs fewer rows
+    // than cols / aspectRatio to keep the image's proportions
     const aspectRatio = this.#imageNaturalWidth / this.#imageNaturalHeight;
-    const rows = Math.round((cols / aspectRatio) * 0.5);
+    const rows = Math.round((cols / aspectRatio) * (char.width / char.height));
 
     const art = ascii_art(
       new Uint8Array(this.#imageData.data.buffer),
