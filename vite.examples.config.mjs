@@ -14,7 +14,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: page('index.html'),
-        resize: page('resize/index.html'),
+        playground: page('playground/index.html'),
         scroll: page('scroll/index.html'),
       },
     },
