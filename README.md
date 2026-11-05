@@ -29,7 +29,7 @@ npm install @ascii-web/client
 | `src`      | —       | Image URL or path |
 | `alt`      | —       | Accessible label (sets `aria-label`) |
 | `min-cols` | `80`    | Minimum character columns |
-| `max-cols` | `300`   | Maximum character columns |
+| `max-cols` | `512`   | Maximum character columns |
 
 ### Styling
 

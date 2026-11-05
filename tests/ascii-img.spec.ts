@@ -93,6 +93,47 @@ test('fits and fills its container as the container resizes', async ({ page }) =
   }
 });
 
+// when the element's size doesn't depend on its content (here a fixed aspect
+// ratio, like the infinite scroll example), a font change doesn't resize it
+test('re-renders when the font size changes but the element size does not', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg' });
+  const el = page.locator('ascii-img');
+  // twice as tall as wide, so the art never sets the height
+  await el.evaluate((el: HTMLElement) => (el.style.aspectRatio = '1 / 2'));
+  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
+
+  await el.evaluate((el: HTMLElement) => el.style.setProperty('--ascii-font-size', '6px'));
+
+  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
+});
+
+// otherwise the old art shows at the new size for a frame: a visible flash
+test('changes the font size and the art together', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg' });
+
+  const { before, sizeRightAfter } = await page.evaluate(() => {
+    const el = document.querySelector('ascii-img') as HTMLElement;
+    const pre = el.shadowRoot!.querySelector('pre')!;
+    const before = { art: pre.textContent, fontSize: getComputedStyle(pre).fontSize };
+    el.style.setProperty('--ascii-font-size', '6px');
+    return { before, sizeRightAfter: getComputedStyle(pre).fontSize };
+  });
+  // until the art is re-rendered, it keeps the size it was rendered at
+  expect(sizeRightAfter).toBe(before.fontSize);
+
+  await expect.poll(() => art(page)).not.toBe(before.art);
+  expect(await page.locator('ascii-img').evaluate((el) => getComputedStyle(el.shadowRoot!.querySelector('pre')!).fontSize)).toBe('6px');
+});
+
+test('fills a wide container with a small font', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg' });
+  // at 4px, a 1200px container needs about 500 columns, within the default max-cols
+  await page.locator('ascii-img').evaluate((el: HTMLElement) => el.style.setProperty('--ascii-font-size', '4px'));
+  await page.locator('#container').evaluate((el) => (el.style.width = '1200px'));
+
+  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
+});
+
 test('does not make a narrow page scroll sideways', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await mount(page, { src: './test-image.jpg' });

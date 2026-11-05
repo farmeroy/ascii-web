@@ -8,11 +8,12 @@ function ensureInit(): Promise<unknown> {
 }
 
 const DEFAULT_MIN_COLS = 80;
-const DEFAULT_MAX_COLS = 300;
 // the image is stored at most this many pixels wide per column: enough for
 // each character to average a few pixels, without holding (and copying into
 // WASM on every render) a full-size photo
 const PIXELS_PER_COL = 4;
+// high enough not to limit typical layouts; stores images at most 2048px wide
+const DEFAULT_MAX_COLS = 512;
 
 const STYLES = `
   :host {
@@ -25,8 +26,12 @@ const STYLES = `
     padding: 0;
     white-space: pre;
     font-family: var(--ascii-font-family, monospace);
-    font-size: var(--ascii-font-size, 8px);
     line-height: var(--ascii-line-height, 1);
+  }
+  /* the pre's font-size is set when rendering, so a new size and the art
+     drawn for it appear together */
+  .measure {
+    font-size: var(--ascii-font-size, 8px);
   }
   pre {
     color: var(--ascii-color, white);
@@ -94,6 +99,9 @@ export class AsciiImg extends HTMLElement {
     // ensure element has a role, even if created by JS (react etc.)
     if (!this.hasAttribute('role')) this.setAttribute('role', 'img');
     this.#resizeObserver.observe(this);
+    // the measure span's size is the font's: re-render when the font changes
+    // even if this element's size doesn't (a web font loading, a CSS variable)
+    this.#resizeObserver.observe(this.#measure);
     ensureInit(); // begin loading wasm async
     // // NOTE: the src img is loaded by this.loadImage
     // // inside of attributeChangedCallback
@@ -186,7 +194,6 @@ export class AsciiImg extends HTMLElement {
     await ensureInit();
     const { data, width, height } = this.#imageData;
 
-    this.#pre.style.fontSize = '';
     const char = this.measureChar();
     if (char.width === 0 || char.height === 0) return;
     const baseCharWidth = char.width;
@@ -195,10 +202,10 @@ export class AsciiImg extends HTMLElement {
     const rawCols = Math.floor(containerWidth / baseCharWidth);
     const cols = Math.min(this.#maxCols, Math.max(this.#minCols, rawCols));
 
-    if (rawCols < this.#minCols) {
-      const baseFontSize = parseFloat(getComputedStyle(this.#pre).fontSize);
-      this.#pre.style.fontSize = `${baseFontSize * (containerWidth / (cols * baseCharWidth))}px`;
-    }
+    // the measured font size, scaled down below min-cols to fit the columns
+    const baseFontSize = parseFloat(getComputedStyle(this.#measure).fontSize);
+    const fontSize = rawCols < this.#minCols ? baseFontSize * (containerWidth / (cols * baseCharWidth)) : baseFontSize;
+    this.#pre.style.fontSize = `${fontSize}px`;
 
     if (cols === this.#lastRenderedCols) return;
     this.#lastRenderedCols = cols;
