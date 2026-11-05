@@ -77,8 +77,6 @@ export class AsciiImg extends HTMLElement {
     measureBox.appendChild(this.#measure);
     this.#shadow.appendChild(measureBox);
 
-    this.setAttribute('role', 'img');
-
     // render on the next frame rather than inside the callback: rendering
     // changes the host's height, which would resize the observed element
     // mid-callback and trigger a ResizeObserver loop error
@@ -89,9 +87,10 @@ export class AsciiImg extends HTMLElement {
   }
 
   connectedCallback(): void {
+    // ensure element has a role, even if created by JS (react etc.)
+    if (!this.hasAttribute('role')) this.setAttribute('role', 'img');
     this.#resizeObserver.observe(this);
     ensureInit(); // begin loading wasm async
-    this.loadImage();
   }
 
   disconnectedCallback(): void {

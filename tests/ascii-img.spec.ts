@@ -36,6 +36,20 @@ test('fits and fills its container as the container resizes', async ({ page }) =
   expect(await page.evaluate(() => (window as any).errors)).toEqual([]);
 });
 
+// how frameworks (React, Vue, ...) create elements; src is set before the
+// element is on the page
+test('renders when created from JS', async ({ page }) => {
+  await page.goto('/tests/fixtures/index.html');
+  await page.evaluate(() => {
+    document.querySelector('ascii-img')!.remove();
+    const el = document.createElement('ascii-img');
+    el.setAttribute('src', './test-image.jpg');
+    document.querySelector('#container')!.append(el);
+  });
+
+  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
+});
+
 test('does not make a narrow page scroll sideways', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/tests/fixtures/index.html');
