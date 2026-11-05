@@ -90,6 +90,7 @@ export class AsciiImg extends HTMLElement {
 
   connectedCallback(): void {
     this.#resizeObserver.observe(this);
+    ensureInit(); // begin loading wasm async
     this.loadImage();
   }
 
