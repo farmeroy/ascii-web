@@ -16,7 +16,8 @@
     "dist/"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "tsc --watch"
   },
   "dependencies": {
     "@ascii-web/wasm": "workspace:*"

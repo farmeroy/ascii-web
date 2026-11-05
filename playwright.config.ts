@@ -20,7 +20,7 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command: 'pnpm dev',
+    command: 'pnpm exec vite',
     url: 'http://localhost:4173/tests/fixtures/index.html',
     reuseExistingServer: !ci,
   },

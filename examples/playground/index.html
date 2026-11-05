@@ -8,7 +8,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono&family=Ubuntu+Mono&display=swap" />
     <link rel="stylesheet" href="../style.css" />
-    <script type="module" src="../../packages/client/ts/ascii-img.ts"></script>
+    <script type="module">
+      import '@ascii-web/client';
+      const img = document.querySelector('ascii-img')
+    </script>
     <style>
       /* mobile: title, art, then controls */
       main {

@@ -55,7 +55,8 @@ jobs:
         run: cargo test --lib
         working-directory: packages/wasm
 
-      # wasm, then client and server (tsc, so this also type-checks them)
+      # wasm, then client and server, and examples
+      # built on pull requests too, so a broken examples build fails the PR
       - run: pnpm build
 
       - name: Playwright tests
@@ -69,12 +70,10 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
-      # built on pull requests too, so a broken examples build fails the PR
-      - run: pnpm build:examples
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
         with:
-          path: dist-examples
+          path: examples/dist
 
   deploy:
     needs: test

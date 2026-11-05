@@ -1,0 +1,14 @@
+{
+  "name": "@ascii-web/examples",
+  "private": "true",
+  "version": "0.1.0",
+  "author": "Raffaele Cataldo",
+  "type": "module",
+  "dependencies": {
+    "@ascii-web/client": "workspace:*"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  }
+}
