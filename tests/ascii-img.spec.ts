@@ -1,6 +1,21 @@
 import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 
+// creates an <ascii-img> with these attributes, set in order, the way
+// frameworks (React, Vue, ...) do, and waits for its first render
+async function mount(page: Page, attributes: Record<string, string>) {
+  await page.evaluate(async (attributes) => {
+    const el = document.createElement('ascii-img');
+    for (const [name, value] of Object.entries(attributes)) el.setAttribute(name, value);
+    document.querySelector('#container')!.replaceChildren(el);
+    const pre = el.shadowRoot!.querySelector('pre')!;
+    while (!pre.textContent) await new Promise((r) => requestAnimationFrame(r));
+  }, attributes);
+}
+
+const art = (page: Page) =>
+  page.evaluate(() => document.querySelector('ascii-img')!.shadowRoot!.querySelector('pre')!.textContent!);
+
 // Does the rendered text fit inside the component, and fill it to within
 // one character?
 async function fit(page: Page) {
@@ -18,118 +33,6 @@ async function fit(page: Page) {
     return { fits: textRight <= right + 0.5, fills: right - textRight < charWidth };
   });
 }
-
-test('fits and fills its container as the container resizes', async ({ page }) => {
-  // window error events, which is how browsers report ResizeObserver loops
-  await page.addInitScript(() => {
-    const errors: string[] = ((window as any).errors = []);
-    window.addEventListener('error', (e) => errors.push(e.message));
-  });
-  await page.goto('/tests/fixtures/index.html');
-  const container = page.locator('#container');
-
-  // 200px is below the min-cols floor (80 cols at 8px), where the font scales down
-  for (const width of [1200, 800, 400, 200, 800, 1200]) {
-    await container.evaluate((el, w) => (el.style.width = `${w}px`), width);
-    await expect.poll(() => fit(page), { message: `at ${width}px` }).toEqual({ fits: true, fills: true });
-  }
-
-  expect(await page.evaluate(() => (window as any).errors)).toEqual([]);
-});
-
-// how frameworks (React, Vue, ...) create elements; src is set before the
-// element is on the page
-test('renders when created from JS', async ({ page }) => {
-  await page.goto('/tests/fixtures/index.html');
-  await page.evaluate(() => {
-    document.querySelector('ascii-img')!.remove();
-    const el = document.createElement('ascii-img');
-    el.setAttribute('src', './test-image.jpg');
-    document.querySelector('#container')!.append(el);
-  });
-
-  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
-});
-
-test('shows the latest src when an earlier image finishes loading last', async ({ page }) => {
-  // slow.jpg is the test photo, held back until we release it
-  let releaseSlow!: () => void;
-  const slow = new Promise<void>((resolve) => (releaseSlow = resolve));
-  await page.route('**/slow.jpg', async (route) => {
-    await slow;
-    await route.fulfill({ path: path.join(__dirname, 'fixtures/test-image.jpg') });
-  });
-
-  await page.goto('/tests/fixtures/index.html');
-  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
-
-  // switch to the slow photo, then straight away to a plain white image
-  await page.evaluate(() => {
-    const el = document.querySelector('ascii-img')!;
-    el.setAttribute('src', './slow.jpg');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    el.setAttribute('src', canvas.toDataURL());
-  });
-  const artChars = () =>
-    page.evaluate(() => {
-      const text = document.querySelector('ascii-img')!.shadowRoot!.querySelector('pre')!.textContent!;
-      return [...new Set(text.replace(/\n/g, ''))].join('');
-    });
-  await expect.poll(artChars).toBe('@');
-
-  // now let the photo arrive; there's no event for "the component ignored it",
-  // so give it time to load before checking
-  const slowLoaded = page.waitForEvent('requestfinished', (r) => r.url().endsWith('slow.jpg'));
-  releaseSlow();
-  await slowLoaded;
-  await page.waitForTimeout(500);
-  expect(await artChars()).toBe('@');
-
-  // and it must still be the white image after the next re-render
-  await page.locator('#container').evaluate((el) => (el.style.width = '600px'));
-  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
-  expect(await artChars()).toBe('@');
-});
-
-test('keeps the image proportions', async ({ page }) => {
-  await page.goto('/tests/fixtures/index.html');
-  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
-
-  const { art, image } = await page.evaluate(async () => {
-    const el = document.querySelector('ascii-img')!;
-
-    const img = new Image();
-    img.src = el.getAttribute('src')!;
-    await img.decode();
-
-    const range = document.createRange();
-    range.selectNodeContents(el.shadowRoot!.querySelector('pre')!);
-    const { width, height } = range.getBoundingClientRect();
-
-    return { art: width / height, image: img.naturalWidth / img.naturalHeight };
-  });
-
-  // within a few percent, for rounding to whole rows
-  expect(art / image).toBeCloseTo(1, 1);
-});
-
-// replaces the fixture's element with one created with these attributes, in
-// order, and waits for its first render
-async function mount(page: Page, attributes: Record<string, string>) {
-  await page.evaluate(async (attributes) => {
-    const el = document.createElement('ascii-img');
-    for (const [name, value] of Object.entries(attributes)) el.setAttribute(name, value);
-    document.querySelector('#container')!.replaceChildren(el);
-    const pre = el.shadowRoot!.querySelector('pre')!;
-    while (!pre.textContent) await new Promise((r) => requestAnimationFrame(r));
-  }, attributes);
-}
-
-const cols = (page: Page) =>
-  page.evaluate(() => document.querySelector('ascii-img')!.shadowRoot!.querySelector('pre')!.textContent!.indexOf('\n'));
 
 // fraction of the art's characters that are the same as converting the
 // full-size image directly, at the same cols and rows
@@ -159,31 +62,40 @@ async function matchWithFullSize(page: Page) {
   });
 }
 
-// the component stores large images scaled down; averaging fewer pixels per
-// character shifts a few characters one step up or down the brightness scale,
-// but the art should be nearly identical
-
-test('art from a large photo matches the full-size photo', async ({ page }) => {
+test.beforeEach(async ({ page }) => {
+  // window error events, which is how browsers report ResizeObserver loops
+  await page.addInitScript(() => {
+    const errors: string[] = ((window as any).errors = []);
+    window.addEventListener('error', (e) => errors.push(e.message));
+  });
   await page.goto('/tests/fixtures/index.html');
-  await mount(page, { src: './notATree.jpg' });
-
-  expect(await matchWithFullSize(page)).toBeGreaterThan(0.9);
 });
 
-test('raising max-cols keeps the art matching the full-size photo', async ({ page }) => {
-  await page.goto('/tests/fixtures/index.html');
-  // stored at 60 cols x 4px = 240px wide, too few pixels for more columns
-  await mount(page, { 'max-cols': '60', src: './notATree.jpg' });
+test.afterEach(async ({ page }) => {
+  expect(await page.evaluate(() => (window as any).errors)).toEqual([]);
+});
 
-  await page.locator('ascii-img').evaluate((el) => el.setAttribute('max-cols', '300'));
-  await expect.poll(() => cols(page)).toBeGreaterThan(60);
+// upgraded rather than created, which runs the callbacks in a different order
+test('renders when written in HTML', async ({ page }) => {
+  await page.locator('#container').evaluate((el) => (el.innerHTML = '<ascii-img src="./test-image.jpg"></ascii-img>'));
 
-  expect(await matchWithFullSize(page)).toBeGreaterThan(0.9);
+  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
+});
+
+test('fits and fills its container as the container resizes', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg' });
+  const container = page.locator('#container');
+
+  // 200px is below the min-cols floor (80 cols at 8px), where the font scales down
+  for (const width of [1200, 800, 400, 200, 800, 1200]) {
+    await container.evaluate((el, w) => (el.style.width = `${w}px`), width);
+    await expect.poll(() => fit(page), { message: `at ${width}px` }).toEqual({ fits: true, fills: true });
+  }
 });
 
 test('does not make a narrow page scroll sideways', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto('/tests/fixtures/index.html');
+  await mount(page, { src: './test-image.jpg' });
   await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
 
   const { scrollWidth, clientWidth } = await page.evaluate(() => {
@@ -191,4 +103,82 @@ test('does not make a narrow page scroll sideways', async ({ page }) => {
     return { scrollWidth, clientWidth };
   });
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});
+
+test('keeps the image proportions', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg' });
+
+  const { art, image } = await page.evaluate(async () => {
+    const el = document.querySelector('ascii-img')!;
+
+    const img = new Image();
+    img.src = el.getAttribute('src')!;
+    await img.decode();
+
+    const range = document.createRange();
+    range.selectNodeContents(el.shadowRoot!.querySelector('pre')!);
+    const { width, height } = range.getBoundingClientRect();
+
+    return { art: width / height, image: img.naturalWidth / img.naturalHeight };
+  });
+
+  // within a few percent, for rounding to whole rows
+  expect(art / image).toBeCloseTo(1, 1);
+});
+
+test('shows the latest src when an earlier image finishes loading last', async ({ page }) => {
+  // slow.jpg is the test photo, held back until we release it
+  let releaseSlow!: () => void;
+  const slow = new Promise<void>((resolve) => (releaseSlow = resolve));
+  await page.route('**/slow.jpg', async (route) => {
+    await slow;
+    await route.fulfill({ path: path.join(__dirname, 'fixtures/test-image.jpg') });
+  });
+  await mount(page, { src: './test-image.jpg' });
+
+  // switch to the slow photo, then straight away to a plain white image
+  await page.evaluate(() => {
+    const el = document.querySelector('ascii-img')!;
+    el.setAttribute('src', './slow.jpg');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    el.setAttribute('src', canvas.toDataURL());
+  });
+  const chars = async () => [...new Set((await art(page)).replace(/\n/g, ''))].join('');
+  await expect.poll(chars).toBe('@');
+
+  // now let the photo arrive; there's no event for "the component ignored it",
+  // so give it time to load before checking
+  const slowLoaded = page.waitForEvent('requestfinished', (r) => r.url().endsWith('slow.jpg'));
+  releaseSlow();
+  await slowLoaded;
+  await page.waitForTimeout(500);
+  expect(await chars()).toBe('@');
+
+  // and it must still be the white image after the next re-render
+  await page.locator('#container').evaluate((el) => (el.style.width = '600px'));
+  await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
+  expect(await chars()).toBe('@');
+});
+
+// the component stores large images scaled down; averaging fewer pixels per
+// character shifts a few characters one step up or down the brightness scale,
+// but the art should be nearly identical
+
+test('art from a large photo matches the full-size photo', async ({ page }) => {
+  await mount(page, { src: './notATree.jpg' });
+
+  expect(await matchWithFullSize(page)).toBeGreaterThan(0.9);
+});
+
+test('raising max-cols keeps the art matching the full-size photo', async ({ page }) => {
+  // stored at 60 cols x 4px = 240px wide, too few pixels for more columns
+  await mount(page, { 'max-cols': '60', src: './notATree.jpg' });
+
+  await page.locator('ascii-img').evaluate((el) => el.setAttribute('max-cols', '300'));
+  await expect.poll(async () => (await art(page)).indexOf('\n')).toBeGreaterThan(60);
+
+  expect(await matchWithFullSize(page)).toBeGreaterThan(0.9);
 });

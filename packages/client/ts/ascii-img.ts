@@ -110,7 +110,6 @@ export class AsciiImg extends HTMLElement {
 
     switch (name) {
       case 'src':
-        this.#lastRenderedCols = 0;
         this.loadImage();
         break;
       case 'alt':
@@ -129,7 +128,6 @@ export class AsciiImg extends HTMLElement {
         // the stored image was scaled for the old max-cols; reload it so more
         // columns still get enough pixels each
         if (this.#imageData && this.#maxCols > previous) {
-          this.#lastRenderedCols = 0;
           this.loadImage();
         } else {
           this.renderAscii();
@@ -166,6 +164,8 @@ export class AsciiImg extends HTMLElement {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       this.#imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // new pixels: render even if the column count hasn't changed
+      this.#lastRenderedCols = 0;
       this.renderAscii();
     };
 
