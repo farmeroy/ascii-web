@@ -116,6 +116,71 @@ test('keeps the image proportions', async ({ page }) => {
   expect(art / image).toBeCloseTo(1, 1);
 });
 
+// replaces the fixture's element with one created with these attributes, in
+// order, and waits for its first render
+async function mount(page: Page, attributes: Record<string, string>) {
+  await page.evaluate(async (attributes) => {
+    const el = document.createElement('ascii-img');
+    for (const [name, value] of Object.entries(attributes)) el.setAttribute(name, value);
+    document.querySelector('#container')!.replaceChildren(el);
+    const pre = el.shadowRoot!.querySelector('pre')!;
+    while (!pre.textContent) await new Promise((r) => requestAnimationFrame(r));
+  }, attributes);
+}
+
+const cols = (page: Page) =>
+  page.evaluate(() => document.querySelector('ascii-img')!.shadowRoot!.querySelector('pre')!.textContent!.indexOf('\n'));
+
+// fraction of the art's characters that are the same as converting the
+// full-size image directly, at the same cols and rows
+async function matchWithFullSize(page: Page) {
+  return page.evaluate(async () => {
+    const el = document.querySelector('ascii-img')!;
+    const art = el.shadowRoot!.querySelector('pre')!.textContent!;
+    const lines = art.trimEnd().split('\n');
+
+    const img = new Image();
+    img.src = el.getAttribute('src')!;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const wasm = '/packages/wasm/pkg/ascii_web.js';
+    const { default: init, ascii_art } = await import(wasm);
+    await init();
+    const full: string = ascii_art(new Uint8Array(pixels.buffer), canvas.width, canvas.height, lines[0].length, lines.length);
+
+    let same = 0;
+    for (let i = 0; i < art.length; i++) if (art[i] === full[i]) same++;
+    return same / art.length;
+  });
+}
+
+// the component stores large images scaled down; averaging fewer pixels per
+// character shifts a few characters one step up or down the brightness scale,
+// but the art should be nearly identical
+
+test('art from a large photo matches the full-size photo', async ({ page }) => {
+  await page.goto('/tests/fixtures/index.html');
+  await mount(page, { src: './notATree.jpg' });
+
+  expect(await matchWithFullSize(page)).toBeGreaterThan(0.9);
+});
+
+test('raising max-cols keeps the art matching the full-size photo', async ({ page }) => {
+  await page.goto('/tests/fixtures/index.html');
+  // stored at 60 cols x 4px = 240px wide, too few pixels for more columns
+  await mount(page, { 'max-cols': '60', src: './notATree.jpg' });
+
+  await page.locator('ascii-img').evaluate((el) => el.setAttribute('max-cols', '300'));
+  await expect.poll(() => cols(page)).toBeGreaterThan(60);
+
+  expect(await matchWithFullSize(page)).toBeGreaterThan(0.9);
+});
+
 test('does not make a narrow page scroll sideways', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/tests/fixtures/index.html');

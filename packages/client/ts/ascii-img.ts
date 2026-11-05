@@ -9,6 +9,10 @@ function ensureInit(): Promise<unknown> {
 
 const DEFAULT_MIN_COLS = 80;
 const DEFAULT_MAX_COLS = 300;
+// the image is stored at most this many pixels wide per column: enough for
+// each character to average a few pixels, without holding (and copying into
+// WASM on every render) a full-size photo
+const PIXELS_PER_COL = 4;
 
 const STYLES = `
   :host {
@@ -52,8 +56,6 @@ export class AsciiImg extends HTMLElement {
   #resizeFrame: number = 0;
 
   #imageData: ImageData | null = null;
-  #imageNaturalWidth: number = 0;
-  #imageNaturalHeight: number = 0;
 
   #minCols: number = DEFAULT_MIN_COLS;
   #maxCols: number = DEFAULT_MAX_COLS;
@@ -122,8 +124,16 @@ export class AsciiImg extends HTMLElement {
       }
       case 'max-cols': {
         const parsed = parseInt(newValue ?? '', 10);
+        const previous = this.#maxCols;
         this.#maxCols = isNaN(parsed) ? DEFAULT_MAX_COLS : parsed;
-        this.renderAscii();
+        // the stored image was scaled for the old max-cols; reload it so more
+        // columns still get enough pixels each
+        if (this.#imageData && this.#maxCols > previous) {
+          this.#lastRenderedCols = 0;
+          this.loadImage();
+        } else {
+          this.renderAscii();
+        }
         break;
       }
     }
@@ -140,11 +150,11 @@ export class AsciiImg extends HTMLElement {
     img.onload = () => {
       // check if src has been updated while loading
       if (this.getAttribute('src') !== src) return;
+      // scale down (never up) to at most PIXELS_PER_COL pixels per column
+      const scale = Math.min(1, (this.#maxCols * PIXELS_PER_COL) / img.naturalWidth);
       const canvas = document.createElement('canvas');
-      this.#imageNaturalWidth = img.naturalWidth;
-      this.#imageNaturalHeight = img.naturalHeight;
-      canvas.width = this.#imageNaturalWidth;
-      canvas.height = this.#imageNaturalHeight;
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
@@ -152,7 +162,9 @@ export class AsciiImg extends HTMLElement {
         return;
       }
 
-      ctx.drawImage(img, 0, 0);
+      // 'high' averages pixels when shrinking a lot instead of skipping them
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       this.#imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       this.renderAscii();
     };
@@ -169,9 +181,10 @@ export class AsciiImg extends HTMLElement {
   }
 
   private async renderAscii(): Promise<void> {
-    if (!this.#imageData || !this.#imageNaturalHeight || !this.#imageNaturalWidth) return;
+    if (!this.#imageData) return;
 
     await ensureInit();
+    const { data, width, height } = this.#imageData;
 
     this.#pre.style.fontSize = '';
     const char = this.measureChar();
@@ -192,16 +205,10 @@ export class AsciiImg extends HTMLElement {
 
     // characters are narrower than they are tall, so the art needs fewer rows
     // than cols / aspectRatio to keep the image's proportions
-    const aspectRatio = this.#imageNaturalWidth / this.#imageNaturalHeight;
+    const aspectRatio = width / height;
     const rows = Math.round((cols / aspectRatio) * (char.width / char.height));
 
-    const art = ascii_art(
-      new Uint8Array(this.#imageData.data.buffer),
-      this.#imageNaturalWidth,
-      this.#imageNaturalHeight,
-      cols,
-      rows,
-    );
+    const art = ascii_art(new Uint8Array(data.buffer), width, height, cols, rows);
 
     this.#pre.textContent = art;
   }
