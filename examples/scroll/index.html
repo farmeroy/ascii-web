@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Infinite scroll · ascii-web</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono&family=Ubuntu+Mono&display=swap" />
+    <link rel="stylesheet" href="../style.css" />
+    <script type="module" src="../../packages/client/ts/ascii-img.ts"></script>
+    <style>
+      figure {
+        margin-bottom: var(--space-8);
+      }
+      figcaption {
+        font-size: var(--text-sm);
+      }
+      /* photos are requested square, and the art keeps the image's proportions,
+         so reserve a square for each one before it loads: no layout shift */
+      ascii-img {
+        aspect-ratio: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1><a href="../">ascii-web</a> · Infinite scroll</h1>
+
+      <div id="feed"></div>
+      <div id="more">Loading…</div>
+    </main>
+
+    <script type="module">
+      const feed = document.querySelector('#feed');
+      const more = document.querySelector('#more');
+      let page = 1;
+      let loading = false;
+
+      // set src a screen before an image scrolls into view, rather than for
+      // every image at once
+      const lazy = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.setAttribute('src', entry.target.dataset.src);
+            lazy.unobserve(entry.target);
+          }
+        },
+        { rootMargin: '100% 0px' },
+      );
+
+      async function loadPage() {
+        const photos = await (await fetch(`https://picsum.photos/v2/list?page=${page++}&limit=10`)).json();
+        for (const photo of photos) {
+          const figure = document.createElement('figure');
+          const img = document.createElement('ascii-img');
+          img.dataset.src = `https://picsum.photos/id/${photo.id}/1000/1000`;
+          img.setAttribute('alt', `Photo by ${photo.author}`);
+          const caption = document.createElement('figcaption');
+          caption.textContent = photo.author;
+          figure.append(img, caption);
+          feed.append(figure);
+          lazy.observe(img);
+        }
+      }
+
+      // fetch the next page while the end of the feed is still two screens away
+      const end = new IntersectionObserver(
+        async ([entry]) => {
+          if (!entry.isIntersecting || loading) return;
+          loading = true;
+          await loadPage();
+          loading = false;
+          // observing again re-checks: if the end is still near, load another page
+          end.unobserve(more);
+          end.observe(more);
+        },
+        { rootMargin: '200% 0px' },
+      );
+      end.observe(more);
+    </script>
+  </body>
+</html>
