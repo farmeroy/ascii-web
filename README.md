@@ -4,6 +4,8 @@ A slightly over-engineered approach to rendering ASCII images on web pages using
 
 The image dynamically resizes the number of characters used given a default font size of 8px. On first render or resize, it calculates its container width and maximizes the number of columns it can fit.
 
+Live demo: https://farmeroy.github.io/ascii-web/
+
 ## Installation
 
 ```bash
@@ -12,7 +14,18 @@ npm install @ascii-web/client
 
 ## Usage
 
+The web component handles measuring the container,
+the size of the font used,
+and the dimensions of the image.
+
+It also ensures that when the components size changes,
+the image source changes, 
+or the font size changes
+that the ASCII image is redrawn.
+
 ### Basic
+
+Currently this requires a bundler:
 
 ```html
 <script type="module">
@@ -47,7 +60,7 @@ ascii-img {
 
 ### Preventing FOUC
 
-The component renders asynchronously (WASM init + image load), so there's a flash of empty content before the ASCII appears. Hide it until the element is defined:
+Web components render asynchronously, so there's a flash of empty content before the ASCII can render. Hide it until the element is defined:
 
 ```css
 ascii-img:not(:defined) {
@@ -67,6 +80,8 @@ ascii-img:not(:defined) {
 }
 ```
 
+Note: there will still be a small delay the first time the WASM is loaded.
+
 ### Preventing layout shift
 
 The component's height depends on the rendered output, which isn't known until after the WASM runs. To reserve space and avoid layout shift, wrap it in a container with a fixed aspect ratio:
@@ -85,18 +100,57 @@ The component's height depends on the rendered output, which isn't known until a
 </div>
 ```
 
+## Using the WASM package directly
+
+The WASM is published as well and can be installed for direct use:
+```bash
+npm install @ascii-web/wasm
+```
+
+However, most of the utility around displaying the output in a user friendly 
+way is handled by the web component.
+
+Still, if you would like to use it:
+
+```ts
+import init, { ascii_art } from '@ascii-web/wasm/web';
+await init(); // downloads and compiles the .wasm
+//   ascii_art(rgba: Uint8Array, width: number, height: number, cols: number, rows: number): string
+const art = ascii_art(rgbaPixels, width, height, cols, rows);
+```
+
+For use in Node.js
+```ts
+import { ascii_art } from '@ascii-web/wasm/node';
+const art = ascii_art(rgbaPixels, width, height, cols, rows);
+```
+
+The tricky part is getting the number of rows right. 
+In the web component, we do a calculation similar to this:
+```ts
+const rows = Math.round((cols / (width / height)) * (character width / line height)
+```
+
+Most monospace fonts with have a col/row ration of roughly 6/10.
+
+
+
 ## Server-side rendering
 
-For static sites (Astro, Next.js, etc.), you can generate the ASCII at build time instead of shipping WASM to the client. Requires `sharp` as a peer dependency.
+I also attempt to export a server package for static sites (Astro, Next.js, etc.), you can generate the ASCII at build time instead of shipping WASM to the client. This is just a thin wrapper around the wasm package.
 
-This will use the Rust Wasm ascii generator on the server to generate an ASCII image with a fixed number of columns.
-It is then up to you to style them appropriately if you want to display them on your web page.
-
-The server-side rendering package is separate:
+Requires `sharp` as a peer dependency.
 
 ```bash
 npm install @ascii-web/server sharp
 ```
+
+This will use the Rust Wasm ascii generator on the server to generate an ASCII image with a fixed number of columns.
+It is then up to you to style them appropriately if you want to display them on your web page.
+
+The drawback here is it's not possible to know what media size will be,
+and the server package is currently not very well developed.
+
 
 ### Astro
 
@@ -124,7 +178,7 @@ export default async function AsciiPortrait() {
 ```ts
 renderAscii(input: string | ArrayBuffer | Uint8Array, opts?: {
   cols?: number;  // default: 120
-  rows?: number;  // default: auto (preserves aspect ratio)
+  rows?: number;  // default: auto 
 }): Promise<string>
 ```
 
@@ -140,10 +194,16 @@ const art = ascii_art(rgbaPixels, width, height, cols, rows);
 No, no it does not.
 In fact, if you are only loading a single image that you could possibly render in advance, this will add some (almost unnoticeable) latency as the WASM and web components are loaded.
 
-Furthermore, if you only want to render 1 ascii image, it would arguably be faster to write the ascii generate in JavaScript, which would avoid downloading the WASM binary.
+Furthermore, if you only want to render 1 ascii image, it would arguably be faster to write the ascii generator in JavaScript, which would avoid downloading the WASM binary.
 
 ## But is it fun? ...or, why use it?
 
 Yes, yes it is fun and it was fun to make.
 I also think if you are rendering many, many ascii images dynamically on a web page this might be better? 
 
+
+## Roadmap
+
+- Benchmarks (I'm curious if the cost of WASM is in any way justified :smile:)
+- support for ascii gifs
+- an ascii-video component
