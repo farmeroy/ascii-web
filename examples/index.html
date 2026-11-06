@@ -13,8 +13,16 @@
     <main>
       <h1>ascii-web</h1>
       <p>
-        <code>&lt;ascii-img&gt;</code> renders images as ASCII art that re-flows to fit its container.
+      <code>ascii-web</code> provides a web component to easily drop in responsive ascii art on web pages. The ascii generation is written in Rust and runs in WASM.
+      Check out the <a href="https://github.com/farmeroy/ascii-web" target="blank">repo on github</a>
       </p>
+    <p>You can install via <code>npm install @ascii-web/client</code>:
+      </p>
+      <pre><code>&lt;script type="module"&gt;
+  import '@ascii-web/client';
+&lt;/script&gt;
+&lt;ascii-img src="my-image.jpg" alt="my-image" &gt;&lt;/ascii-img&gt;</code></pre>
+      <p>Try it out using the following examples:</p>
       <ul>
         <li><a href="./playground/">Playground</a>: resize the container, adjust the settings, or try your own image</li>
         <li><a href="./scroll/">Infinite scroll</a>: a feed of photos from Lorem Picsum</li>
