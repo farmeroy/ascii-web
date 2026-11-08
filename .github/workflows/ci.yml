@@ -52,8 +52,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Rust tests
-        run: cargo test --lib
-        working-directory: packages/wasm
+        run: pnpm -r test
 
       # wasm, then client and server, and examples
       # built on pull requests too, so a broken examples build fails the PR
@@ -62,7 +61,7 @@ jobs:
       - name: Playwright tests
         run: |
           pnpm exec playwright install --with-deps
-          pnpm test
+          pnpm exec playwright test
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:

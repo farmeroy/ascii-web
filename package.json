@@ -9,7 +9,7 @@
     "build:examples": "pnpm --filter @ascii-web/examples build",
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
-    "test": "playwright test"
+    "test": "pnpm -r test && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

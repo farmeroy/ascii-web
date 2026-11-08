@@ -18,6 +18,7 @@
     "pkg-node/"
   ],
   "scripts": {
-    "build": "wasm-pack build --target web --no-pack && wasm-pack build --target nodejs --out-dir pkg-node --no-pack && rm -f pkg/.gitignore pkg-node/.gitignore"
+    "build": "wasm-pack build --target web --no-pack && wasm-pack build --target nodejs --out-dir pkg-node --no-pack && rm -f pkg/.gitignore pkg-node/.gitignore",
+    "test": "cargo test --lib"
   }
 }
