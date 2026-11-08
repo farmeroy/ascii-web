@@ -168,7 +168,7 @@ export class AsciiImg extends HTMLElement {
     img.crossOrigin = 'anonymous';
     img.src = src;
 
-    img.onload = () => {
+    img.onload = async () => {
       // check if src has been updated while loading
       if (this.getAttribute('src') !== src) return;
       // scale down (never up) to at most PIXELS_PER_COL pixels per column
@@ -189,11 +189,18 @@ export class AsciiImg extends HTMLElement {
       this.#imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       // new pixels: render even if the column count hasn't changed
       this.#lastRenderedCols = 0;
-      this.renderAscii();
+      await this.renderAscii();
+      // like <img>: load once the image is shown
+      this.dispatchEvent(new Event('load'));
     };
 
     img.onerror = () => {
-      console.error(`Failed to load image: ${src}`);
+      if (this.getAttribute('src') !== src) return;
+      // like a broken <img>: drop the old art and show the alt text instead
+      this.#imageData = null;
+      this.#pre.style.fontSize = '';
+      this.#pre.textContent = this.getAttribute('alt') ?? '';
+      this.dispatchEvent(new Event('error'));
     };
   }
 

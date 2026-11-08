@@ -40,9 +40,19 @@ Currently this requires a bundler:
 | Attribute  | Default | Description |
 |------------|---------|-------------|
 | `src`      | —       | Image URL or path |
-| `alt`      | —       | Accessible label (sets `aria-label`) |
+| `alt`      | —       | Accessible label, as on `<img>`: `alt=""` marks it decorative, so screen readers skip it. Shown in place of the art if the image fails to load |
 | `min-cols` | `80`    | Minimum character columns |
 | `max-cols` | `512`   | Maximum character columns |
+
+### Events
+
+Like `<img>`, it fires `load` once the art is shown and `error` if the image fails to load (neither bubbles):
+
+```js
+const img = document.querySelector('ascii-img');
+img.addEventListener('load', () => img.classList.add('loaded'));
+img.addEventListener('error', () => (img.hidden = true));
+```
 
 ### Styling
 
@@ -80,7 +90,7 @@ ascii-img:not(:defined) {
 }
 ```
 
-Note: there will still be a small delay the first time the WASM is loaded.
+Note: `:defined` only waits for the component's script, so there will still be a short delay while the image and WASM load. To fade in once the art itself is shown, use the [`load` event](#events) instead.
 
 ### Preventing layout shift
 

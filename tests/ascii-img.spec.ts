@@ -95,6 +95,15 @@ test('screen readers skip it when alt is empty (decorative)', async ({ page }) =
   await expect(page.getByRole('img')).toHaveCount(0);
 });
 
+// like a broken <img>
+test('shows the alt text in place of the art when the image fails to load', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg', alt: 'A portrait' });
+
+  await page.locator('ascii-img').evaluate((el) => el.setAttribute('src', './missing.jpg'));
+
+  await expect(page.getByText('A portrait')).toBeVisible();
+});
+
 test('fits and fills its container as the container resizes', async ({ page }) => {
   await mount(page, { src: './test-image.jpg' });
   const container = page.locator('#container');
