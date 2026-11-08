@@ -4,7 +4,7 @@ A slightly over-engineered approach to rendering ASCII images on web pages using
 
 The image dynamically resizes the number of characters used given a default font size of 8px. On first render or resize, it calculates its container width and maximizes the number of columns it can fit.
 
-Live demo: https://farmeroy.github.io/ascii-web/
+Live demo: https://ascii-web.raffaelecataldo.com
 
 ## Installation
 
