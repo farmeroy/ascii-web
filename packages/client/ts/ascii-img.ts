@@ -96,8 +96,9 @@ export class AsciiImg extends HTMLElement {
   }
 
   connectedCallback(): void {
-    // ensure element has a role, even if created by JS (react etc.)
-    if (!this.hasAttribute('role')) this.setAttribute('role', 'img');
+    // set here rather than in the constructor, which mustn't add attributes
+    // (creating the element from JS, as frameworks do, would throw)
+    this.updateRole();
     this.#resizeObserver.observe(this);
     // the measure span's size is the font's: re-render when the font changes
     // even if this element's size doesn't (a web font loading, a CSS variable)
@@ -121,7 +122,7 @@ export class AsciiImg extends HTMLElement {
         this.loadImage();
         break;
       case 'alt':
-        this.setAttribute('aria-label', newValue ?? '');
+        this.updateRole();
         break;
       case 'min-cols': {
         const parsed = parseInt(newValue ?? '', 10);
@@ -143,6 +144,20 @@ export class AsciiImg extends HTMLElement {
         break;
       }
     }
+  }
+
+  // like <img>: alt names the image, and alt="" marks it decorative, so
+  // screen readers skip it
+  private updateRole(): void {
+    const alt = this.getAttribute('alt');
+    if (alt === '') {
+      this.removeAttribute('role');
+      this.removeAttribute('aria-label');
+      return;
+    }
+    this.setAttribute('role', 'img');
+    if (alt === null) this.removeAttribute('aria-label');
+    else this.setAttribute('aria-label', alt);
   }
 
   private loadImage(): void {

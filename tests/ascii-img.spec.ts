@@ -82,6 +82,19 @@ test('renders when written in HTML', async ({ page }) => {
   await expect.poll(() => fit(page)).toEqual({ fits: true, fills: true });
 });
 
+// alt works as it does on <img>
+test('screen readers announce it as an image named by its alt', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg', alt: 'A portrait' });
+
+  await expect(page.getByRole('img', { name: 'A portrait' })).toHaveCount(1);
+});
+
+test('screen readers skip it when alt is empty (decorative)', async ({ page }) => {
+  await mount(page, { src: './test-image.jpg', alt: '' });
+
+  await expect(page.getByRole('img')).toHaveCount(0);
+});
+
 test('fits and fills its container as the container resizes', async ({ page }) => {
   await mount(page, { src: './test-image.jpg' });
   const container = page.locator('#container');
