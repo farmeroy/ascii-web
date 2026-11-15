@@ -27,16 +27,16 @@
       figcaption {
         font-size: var(--text-sm);
       }
-      /* photos are requested square, and the art keeps the image's proportions,
-         so reserve a square for each one before it loads: no layout shift */
-      ascii-img {
-        aspect-ratio: 1;
-      }
     </style>
   </head>
   <body>
     <main>
       <h1><a href="../">ascii-web</a> · Infinite scroll</h1>
+      <p>
+        Photos from
+        <a href="https://commons.wikimedia.org/wiki/Category:Quality_images">Wikimedia Commons' quality images</a>,
+        used under the license named in each caption.
+      </p>
 
       <fieldset>
         <label>font size (smaller is more detail) <input id="font-size" type="range" min="4" max="24" value="12" /></label>
@@ -49,7 +49,8 @@
     <script type="module">
       const feed = document.querySelector('#feed');
       const more = document.querySelector('#more');
-      let page = 1;
+      // the API's token for the next page; null once there are no more
+      let next = {};
       let loading = false;
 
       // apply the font size once it stops changing: each change re-renders
@@ -84,19 +85,57 @@
         { rootMargin: '100% 0px' },
       );
 
+      // Wikimedia Commons' quality images: photos taken by Commons users,
+      // most recently promoted first
+      const API = 'https://commons.wikimedia.org/w/api.php';
+      const PARAMS = {
+        action: 'query',
+        format: 'json',
+        formatversion: '2',
+        origin: '*', // makes the API send CORS headers
+        generator: 'categorymembers',
+        gcmtitle: 'Category:Quality_images',
+        gcmtype: 'file',
+        gcmsort: 'timestamp',
+        gcmdir: 'desc',
+        gcmlimit: '10',
+        prop: 'imageinfo',
+        iiprop: 'url|size|extmetadata',
+        iiurlwidth: '1000',
+        iiextmetadatafilter: 'Artist|LicenseShortName',
+      };
+
+      // metadata values are HTML (the artist is often a link): keep the text
+      const text = (html = '') => new DOMParser().parseFromString(html, 'text/html').body.textContent.trim();
+
+      // resolves false once there are no more photos
       async function loadPage() {
-        const photos = await (await fetch(`https://picsum.photos/v2/list?page=${page++}&limit=10`)).json();
-        for (const photo of photos) {
+        if (!next) return false;
+        const url = `${API}?${new URLSearchParams({ ...PARAMS, ...next })}`;
+        const { query, continue: cont } = await (await fetch(url)).json();
+        next = cont ?? null;
+        for (const page of query?.pages ?? []) {
+          const info = page.imageinfo?.[0];
+          if (!info?.thumburl) continue;
+          const title = page.title.replace(/^File:/, '').replace(/\.\w+$/, '');
+          const artist = text(info.extmetadata?.Artist?.value);
+          const license = info.extmetadata?.LicenseShortName?.value;
           const figure = document.createElement('figure');
           const img = document.createElement('ascii-img');
-          img.dataset.src = `https://picsum.photos/id/${photo.id}/1000/1000`;
-          img.setAttribute('alt', `Photo by ${photo.author}`);
+          img.dataset.src = info.thumburl;
+          img.setAttribute('alt', title);
+          // the art keeps the image's proportions, so reserve them before it
+          // loads: no layout shift
+          img.style.aspectRatio = `${info.width} / ${info.height}`;
+          // most of these are CC BY or BY-SA, which require crediting the author
+          // and naming the license
           const caption = document.createElement('figcaption');
-          caption.textContent = photo.author;
+          caption.textContent = [title, artist, license].filter(Boolean).join(' · ');
           figure.append(img, caption);
           feed.append(figure);
           lazy.observe(img);
         }
+        return true;
       }
 
       // fetch the next page while the end of the feed is still two screens away
@@ -104,8 +143,13 @@
         async ([entry]) => {
           if (!entry.isIntersecting || loading) return;
           loading = true;
-          await loadPage();
+          const hasMore = await loadPage();
           loading = false;
+          if (!hasMore) {
+            end.disconnect();
+            more.textContent = 'No more photos';
+            return;
+          }
           // observing again re-checks: if the end is still near, load another page
           end.unobserve(more);
           end.observe(more);
