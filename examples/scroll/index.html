@@ -39,7 +39,7 @@
       </p>
 
       <fieldset>
-        <label>font size (smaller is more detail) <input id="font-size" type="range" min="4" max="24" value="12" /></label>
+        <label>font size (smaller is more detail) <input id="font-size" type="range" min="0" max="1" step="0.01" /></label>
       </fieldset>
 
       <div id="feed"></div>
@@ -63,13 +63,32 @@
         };
       }
 
-      // set on the feed, the size is inherited by every image, including ones
-      // added later; the slider starts at the stylesheet's size (smaller on phones)
+      // the slider is logarithmic: each step scales the font size by the same
+      // factor, so a step changes the detail about as much at either end
+      const MIN_SIZE = 4;
+      let maxSize;
+      const sizeAt = (t) => MIN_SIZE * (maxSize / MIN_SIZE) ** t;
+      const positionOf = (size) => Math.log(size / MIN_SIZE) / Math.log(maxSize / MIN_SIZE);
+      const currentSize = () => parseFloat(getComputedStyle(feed).getPropertyValue('--ascii-font-size'));
+
+      // past the size that fits 80 columns (min-cols) the images shrink the
+      // font to fit 80 anyway, so larger sizes change nothing; a monospace
+      // character is roughly half an em wide. Keeps the current size in place
       const fontSize = document.querySelector('#font-size');
-      fontSize.value = parseFloat(getComputedStyle(feed).getPropertyValue('--ascii-font-size'));
+      function fitSlider() {
+        const size = currentSize();
+        maxSize = Math.max(MIN_SIZE + 1, feed.clientWidth / (80 * 0.5));
+        fontSize.value = positionOf(size);
+      }
+      // starts at the stylesheet's size (smaller on phones)
+      fitSlider();
+      window.addEventListener('resize', debounce(fitSlider));
+
+      // set on the feed, the size is inherited by every image, including ones
+      // added later
       fontSize.addEventListener(
         'input',
-        debounce((e) => feed.style.setProperty('--ascii-font-size', `${e.target.value}px`)),
+        debounce((e) => feed.style.setProperty('--ascii-font-size', `${sizeAt(e.target.value).toFixed(1)}px`)),
       );
 
       // set src a screen before an image scrolls into view, rather than for
